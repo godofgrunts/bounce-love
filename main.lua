@@ -26,89 +26,116 @@ For more information, please refer to <http://unlicense.org>
 --]]
 
 local music
-local bonk
 
-local paddle1
-local paddle2
-local pw -- paddle width
-local ph -- paddle height
-local ball
+paddle1 = { x = 10, y = love.graphics.getHeight()/2, speed = 200, img = nil, score = 0}
+paddle2 = { x = love.graphics.getWidth() - 40, y = love.graphics.getHeight()/2, speed = 200, img = nil, score = 0}
+ball = { x = love.graphics.getWidth()/2, y = love.graphics.getHeight()/2, speed = { x = 200, y = 200}, img = nil, bonk = nil}
+local change = { -1, 1 }
+local gameOver = false
 
-local p1y
-local p2y
-
-local bxs -- ball x speed
-local bys -- ball y speed
-local bx
-local by
-
-local screen_width = 500
-local screen_height = 300
+function CheckCollision(x1,y1,w1,h1, x2,y2,w2,h2)
+    return x1 < x2+w2 and
+            x2 < x1+w1 and
+            y1 < y2+h2 and
+            y2 < y1+h1
+end
 
 function love.load()
 
-    love.window.setTitle('Bounce')
-    love.window.setMode(screen_width, screen_height)
-    ball = love.graphics.newImage("sprites/ball.png")
-    paddle1 = love.graphics.newImage("sprites/paddle.png")
-    paddle2 = love.graphics.newImage("sprites/paddle.png")
-    p1y = love.graphics.getHeight()/2
-    p2y = love.graphics.getHeight()/2
-    bxs = -300 -- always starts the same
-    bys = 300 -- always starts the same
-    bx = love.graphics.getWidth()/2
-    by = love.graphics.getHeight()/2
-    pw = paddle1:getWidth()
-    ph = paddle1:getHeight()
-    music = love.audio.newSource("sound/fight_looped.wav", static)
+    ball.img = love.graphics.newImage("sprites/ball.png")
+    paddle1.img = love.graphics.newImage("sprites/paddle.png")
+    paddle2.img = love.graphics.newImage("sprites/paddle.png")
+
+
+
+    music = love.audio.newSource("sound/fight_looped.wav")
+    music:setVolume(0.3)
+    music:setLooping(true)
     music:play()
-    bonk = love.audio.newSource("sound/Blip_Select.mp3", static)
+    ball.bonk = love.audio.newSource("sound/Blip_Select.mp3", static)
+    ball.bonk:setVolume(0.5)
 
 end
 
 
 
 function love.draw()
-
-    love.graphics.draw(ball, bx, by)
-    love.graphics.draw(paddle1, -10, p1y)
-    love.graphics.draw(paddle2, love.graphics.getWidth() - 20, p2y)
-
+    if (gameOver == false) then
+        love.graphics.draw(ball.img, ball.x, ball.y)
+        love.graphics.draw(paddle1.img, paddle1.x, paddle1.y)
+        love.graphics.draw(paddle2.img, paddle2.x, paddle2.y)
+        love.graphics.print("Score " .. paddle1.score, 100, 50)
+        love.graphics.print("Score " .. paddle2.score, love.graphics.getWidth()-100, 50)
+    else
+        if (paddle1.score >= 10) then
+            love.graphics.print("Player 1 Wins!", love.graphics.getWidth()/2, love.graphics.getHeight()/2)
+        elseif (paddle2.score >= 10) then
+            love.graphics.print("Player 2 Wins!", love.graphics.getWidth()/2, love.graphics.getHeight()/2)
+        end
+        love.graphics.print("Press 'r' to restart!", love.graphics.getWidth()/2, love.graphics.getHeight()/2 + 20)
+    end
 end
 
 function love.update(dt)
 
-    if (love.keyboard.isDown("s")) and (p1y < love.graphics.getHeight() - 24) then
-        p1y = p1y + 200 * dt
+    if (love.keyboard.isDown("s")) and (paddle1.y < love.graphics.getHeight() - 24) then
+        paddle1.y = paddle1.y + paddle1.speed * dt
     end
-    if (love.keyboard.isDown("w")) and (p1y > - 12) then
-        p1y = p1y - 200 * dt
+    if (love.keyboard.isDown("w")) and (paddle1.y > - 12) then
+        paddle1.y = paddle1.y - paddle1.speed * dt
+    end 
+
+    if (love.keyboard.isDown("l")) and (paddle2.y < love.graphics.getHeight() - 24) then
+        paddle2.y = paddle2.y + paddle2.speed * dt
+    end
+    if (love.keyboard.isDown("o")) and (paddle2.y > - 12) then
+        paddle2.y = paddle2.y - paddle2.speed * dt
     end
 
-    if (love.keyboard.isDown("l")) and (p2y < love.graphics.getHeight() - 24) then
-        p2y = p2y + 200 * dt
+    if (ball.y >= love.graphics.getHeight() - 24) then
+        ball.speed.y = -math.abs(ball.speed.y)
+        ball.bonk:play()
     end
-    if (love.keyboard.isDown("o")) and (p2y > - 12) then
-        p2y = p2y - 200 * dt
+    if (ball.y <= -5) then
+        ball.speed.y = math.abs(ball.speed.y)
+        ball.bonk:play()
     end
-
-    if (by >= love.graphics.getHeight() - 24) then
-        bys = -math.abs(bys)
-        bonk:play()
+    if (ball.x >= love.graphics.getWidth() -24) then
+        ball.speed.x = -math.abs(ball.speed.x)
+        ball.x = love.graphics.getWidth()/2
+        ball.y = love.graphics.getHeight()/2
+        ball.bonk:play()
+        paddle1.score = paddle1.score + 1
     end
-    if (by <= -5) then
-        bys = math.abs(bys)
-        bonk:play()
+    if (ball.x <= -13) then
+        ball.speed.x = math.abs(ball.speed.x)
+        ball.x = love.graphics.getWidth()/2
+        ball.y = love.graphics.getHeight()/2
+        ball.bonk:play()
+        paddle2.score = paddle2.score + 1
     end
-    if (bx >= love.graphics.getWidth() -24) then
-        bxs = -math.abs(bxs)
-        bonk:play()
+    if CheckCollision(ball.x + 7, ball.y + 2.5, ball.img:getWidth() - 7 , ball.img:getHeight() -2.5 , paddle1.x + 5, paddle1.y + 5, paddle1.img:getWidth() - 15 , paddle1.img:getHeight() - 5 ) then
+        ball.speed.x = math.abs(ball.speed.x)
+        ball.speed.y = change[math.random(2)] * ball.speed.y
+        ball.bonk:play()
     end
-    if (bx <= -13) then
-        bxs = math.abs(bxs)
-        bonk:play()
+    if CheckCollision(ball.x + 7, ball.y + 2.5, ball.img:getWidth() - 7 , ball.img:getHeight() -2.5 , paddle2.x + 18, paddle2.y + 5, paddle2.img:getWidth() - 15 , paddle2.img:getHeight() - 5 ) then
+        ball.speed.x = -math.abs(ball.speed.x)
+        ball.speed.y = change[math.random(2)] * ball.speed.y
+        ball.bonk:play()
     end
-
-    by = by + bys * dt
-    bx = bx + bxs * dt
+    if (paddle1.score >= 10 or paddle2.score >= 10) then
+        ball.speed.x = 0
+        ball.speed.y = 0
+        gameOver = true
+    end
+    if (gameOver == true and love.keyboard.isDown('r')) then
+        gameOver = false
+        paddle1.score = 0
+        paddle2.score = 0
+        ball.speed.x = 200
+        ball.speed.y = 200
+    end
+    ball.y = ball.y + ball.speed.y * dt
+    ball.x = ball.x + ball.speed.x * dt
 end
