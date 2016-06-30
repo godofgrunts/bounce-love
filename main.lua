@@ -24,6 +24,9 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 For more information, please refer to <http://unlicense.org>
 --]]
+require "menu"
+require "music"
+
 
 local music
 
@@ -42,100 +45,115 @@ end
 
 function love.load()
 
+    gamestate = "menu"
+
+    medium = love.graphics.setNewFont(12)
+
+    button_spawn(5,50,"Start","start")
+    button_spawn(5,200,"Quit","quit")
+
     ball.img = love.graphics.newImage("sprites/ball.png")
     paddle1.img = love.graphics.newImage("sprites/paddle.png")
     paddle2.img = love.graphics.newImage("sprites/paddle.png")
 
 
 
-    music = love.audio.newSource("sound/fight_looped.wav")
-    music:setVolume(0.3)
-    music:setLooping(true)
-    music:play()
-    ball.bonk = love.audio.newSource("sound/Blip_Select.mp3", static)
-    ball.bonk:setVolume(0.5)
+
 
 end
 
 
 
 function love.draw()
-    if (gameOver == false) then
-        love.graphics.draw(ball.img, ball.x, ball.y)
-        love.graphics.draw(paddle1.img, paddle1.x, paddle1.y)
-        love.graphics.draw(paddle2.img, paddle2.x, paddle2.y)
-        love.graphics.print("Score " .. paddle1.score, 100, 50)
-        love.graphics.print("Score " .. paddle2.score, love.graphics.getWidth()-100, 50)
-    else
-        if (paddle1.score >= 10) then
-            love.graphics.print("Player 1 Wins!", love.graphics.getWidth()/2, love.graphics.getHeight()/2)
-        elseif (paddle2.score >= 10) then
-            love.graphics.print("Player 2 Wins!", love.graphics.getWidth()/2, love.graphics.getHeight()/2)
+    if gamestate == "menu" then
+        button_draw()
+    end
+    if gamestate == "playing" then
+
+        if (gameOver == false) then
+            love.graphics.draw(ball.img, ball.x, ball.y)
+            love.graphics.draw(paddle1.img, paddle1.x, paddle1.y)
+            love.graphics.draw(paddle2.img, paddle2.x, paddle2.y)
+            love.graphics.print("Score " .. paddle1.score, 100, 50)
+            love.graphics.print("Score " .. paddle2.score, love.graphics.getWidth()-100, 50)
+        else
+            if (paddle1.score >= 10) then
+                love.graphics.print("Player 1 Wins!", love.graphics.getWidth()/2, love.graphics.getHeight()/2)
+            elseif (paddle2.score >= 10) then
+                love.graphics.print("Player 2 Wins!", love.graphics.getWidth()/2, love.graphics.getHeight()/2)
+            end
+            love.graphics.print("Press 'r' to restart!", love.graphics.getWidth()/2, love.graphics.getHeight()/2 + 20)
         end
-        love.graphics.print("Press 'r' to restart!", love.graphics.getWidth()/2, love.graphics.getHeight()/2 + 20)
     end
 end
 
 function love.update(dt)
+  if gamestate == "playing" then
+        if (love.keyboard.isDown("s")) and (paddle1.y < love.graphics.getHeight() - 24) then
+            paddle1.y = paddle1.y + paddle1.speed * dt
+        end
+        if (love.keyboard.isDown("w")) and (paddle1.y > - 12) then
+            paddle1.y = paddle1.y - paddle1.speed * dt
+        end
 
-    if (love.keyboard.isDown("s")) and (paddle1.y < love.graphics.getHeight() - 24) then
-        paddle1.y = paddle1.y + paddle1.speed * dt
-    end
-    if (love.keyboard.isDown("w")) and (paddle1.y > - 12) then
-        paddle1.y = paddle1.y - paddle1.speed * dt
-    end 
+        if (love.keyboard.isDown("l")) and (paddle2.y < love.graphics.getHeight() - 24) then
+            paddle2.y = paddle2.y + paddle2.speed * dt
+        end
+        if (love.keyboard.isDown("o")) and (paddle2.y > - 12) then
+            paddle2.y = paddle2.y - paddle2.speed * dt
+        end
 
-    if (love.keyboard.isDown("l")) and (paddle2.y < love.graphics.getHeight() - 24) then
-        paddle2.y = paddle2.y + paddle2.speed * dt
+        if (ball.y >= love.graphics.getHeight() - 24) then
+            ball.speed.y = -math.abs(ball.speed.y)
+            ball.bonk:play()
+        end
+        if (ball.y <= -5) then
+            ball.speed.y = math.abs(ball.speed.y)
+            ball.bonk:play()
+        end
+        if (ball.x >= love.graphics.getWidth() -24) then
+            ball.speed.x = -math.abs(ball.speed.x)
+            ball.x = love.graphics.getWidth()/2
+            ball.y = love.graphics.getHeight()/2
+            ball.bonk:play()
+            paddle1.score = paddle1.score + 1
+        end
+        if (ball.x <= -13) then
+            ball.speed.x = math.abs(ball.speed.x)
+            ball.x = love.graphics.getWidth()/2
+            ball.y = love.graphics.getHeight()/2
+            ball.bonk:play()
+            paddle2.score = paddle2.score + 1
+        end
+        if CheckCollision(ball.x + 7, ball.y + 2.5, ball.img:getWidth() - 7 , ball.img:getHeight() -2.5 , paddle1.x + 5, paddle1.y + 5, paddle1.img:getWidth() - 15 , paddle1.img:getHeight() - 5 ) then
+            ball.speed.x = math.abs(ball.speed.x)
+            ball.speed.y = change[math.random(2)] * ball.speed.y
+            ball.bonk:play()
+        end
+        if CheckCollision(ball.x + 7, ball.y + 2.5, ball.img:getWidth() - 7 , ball.img:getHeight() -2.5 , paddle2.x + 18, paddle2.y + 5, paddle2.img:getWidth() - 15 , paddle2.img:getHeight() - 5 ) then
+            ball.speed.x = -math.abs(ball.speed.x)
+            ball.speed.y = change[math.random(2)] * ball.speed.y
+            ball.bonk:play()
+        end
+        if (paddle1.score >= 10 or paddle2.score >= 10) then
+            ball.speed.x = 0
+            ball.speed.y = 0
+            gameOver = true
+        end
+        if (gameOver == true and love.keyboard.isDown('r')) then
+            gameOver = false
+            paddle1.score = 0
+            paddle2.score = 0
+            ball.speed.x = 200
+            ball.speed.y = 200
+            gameMusic:stop()
+            gamestate = "menu"
+        end
+        ball.y = ball.y + ball.speed.y * dt
+        ball.x = ball.x + ball.speed.x * dt
     end
-    if (love.keyboard.isDown("o")) and (paddle2.y > - 12) then
-        paddle2.y = paddle2.y - paddle2.speed * dt
-    end
+end
 
-    if (ball.y >= love.graphics.getHeight() - 24) then
-        ball.speed.y = -math.abs(ball.speed.y)
-        ball.bonk:play()
-    end
-    if (ball.y <= -5) then
-        ball.speed.y = math.abs(ball.speed.y)
-        ball.bonk:play()
-    end
-    if (ball.x >= love.graphics.getWidth() -24) then
-        ball.speed.x = -math.abs(ball.speed.x)
-        ball.x = love.graphics.getWidth()/2
-        ball.y = love.graphics.getHeight()/2
-        ball.bonk:play()
-        paddle1.score = paddle1.score + 1
-    end
-    if (ball.x <= -13) then
-        ball.speed.x = math.abs(ball.speed.x)
-        ball.x = love.graphics.getWidth()/2
-        ball.y = love.graphics.getHeight()/2
-        ball.bonk:play()
-        paddle2.score = paddle2.score + 1
-    end
-    if CheckCollision(ball.x + 7, ball.y + 2.5, ball.img:getWidth() - 7 , ball.img:getHeight() -2.5 , paddle1.x + 5, paddle1.y + 5, paddle1.img:getWidth() - 15 , paddle1.img:getHeight() - 5 ) then
-        ball.speed.x = math.abs(ball.speed.x)
-        ball.speed.y = change[math.random(2)] * ball.speed.y
-        ball.bonk:play()
-    end
-    if CheckCollision(ball.x + 7, ball.y + 2.5, ball.img:getWidth() - 7 , ball.img:getHeight() -2.5 , paddle2.x + 18, paddle2.y + 5, paddle2.img:getWidth() - 15 , paddle2.img:getHeight() - 5 ) then
-        ball.speed.x = -math.abs(ball.speed.x)
-        ball.speed.y = change[math.random(2)] * ball.speed.y
-        ball.bonk:play()
-    end
-    if (paddle1.score >= 10 or paddle2.score >= 10) then
-        ball.speed.x = 0
-        ball.speed.y = 0
-        gameOver = true
-    end
-    if (gameOver == true and love.keyboard.isDown('r')) then
-        gameOver = false
-        paddle1.score = 0
-        paddle2.score = 0
-        ball.speed.x = 200
-        ball.speed.y = 200
-    end
-    ball.y = ball.y + ball.speed.y * dt
-    ball.x = ball.x + ball.speed.x * dt
+function love.mousepressed(x, y)
+    button_click(x,y)
 end
